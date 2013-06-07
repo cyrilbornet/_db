@@ -16,26 +16,13 @@
  *	07/06/2013 | 2.2 | Operators in WHERE clauses (VB)
  */
 
-// === VARIABLES de connexion pour ce site =====================================================================================================================
-
-if ($_SERVER['HTTP_HOST']=='127.0.0.1'||$_SERVER['HTTP_HOST']=='etalk.cc') {
-	$GLOBALS['DBHost'] = 'localhost';
-	$GLOBALS['DBUser'] = 'php';
-	$GLOBALS['DBPass'] = 'polipo98';
-}
-else {
-	$GLOBALS['DBHost'] = 'localhost';
-	$GLOBALS['DBUser'] = 'etalk';
-	$GLOBALS['DBPass'] = 'ozwe2010';
-}
-$GLOBALS['DBName'] = 'etalk';
-
 // === Ouvre une CONNEXION globale au serveur de DB ============================================================================================================
 $GLOBALS['db_link'] = false;
 function db_o() {
 	// MySQL 4.1 et supérieur
 	if ($GLOBALS['db_link']===false) {
 		$GLOBALS['db_link'] = mysql_connect($GLOBALS['DBHost'], $GLOBALS['DBUser'], $GLOBALS['DBPass']);					//  Connexion à MySQL
+		mysql_query('SET NAMES '.DB_ENCODING);
 		if (!$GLOBALS['db_link']) {
 			if ((include '_down.html')===false) {
 				print('<h1>Down for maintenance</h1><p>This website is currently down for maintenance. We are currently working on it, so please come back in a few hours...</p><hr/>'.$_SERVER['HTTP_HOST'].'<i>');
