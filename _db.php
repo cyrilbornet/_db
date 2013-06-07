@@ -1,4 +1,4 @@
 <?php
-	import('_db_mysql.php');
-#	import('_db_pgsql.php');
+	require '_db_mysql.php';
+#	require '_db_pgsql.php';
 ?>
