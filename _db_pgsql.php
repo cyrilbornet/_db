@@ -60,16 +60,14 @@ function db_w($refs) {
 	if (count($refs)>0) {
 		$where = array();
 		foreach ($refs as $key => $value) {
-			$proper_key = $key;
-			$proper_key = str_replace('%','',$proper_key);
-			$proper_key = str_replace('!','',$proper_key);
-
 			if(strstr($key, "%") !== false){
+				$proper_key = str_replace('%','',$proper_key);
 				$str_val = ($value===null)?'null':'"'.pg_escape_string(str_replace($proper_key,$value,$key), $link).'"';
 				$where[] = $proper_key.' ILIKE '.$str_val;
 			}elseif(strstr($key, "!")){
+				$proper_key = str_replace('!','',$proper_key);
 				$str_val = ($value===null)?'null':'"'.pg_escape_string($proper_key, $link).'"';
-				$where[] = $key.' != '.$str_val;
+				$where[] = $proper_key.' != '.$str_val;
 
 			}else{
 				$str_val = ($value===null)?'null':'"'.pg_escape_string($value, $link).'"';
