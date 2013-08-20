@@ -125,13 +125,9 @@ function db_r($table, $datas, $do_log=true) {
 function db_u($table, $refs, $datas, $do_log=true) {
 	$link = db_o();																		// Ouvre une connexion
 
-	$test = db_s($table, $refs);											// Pour éviter le risque d'écraser des données, on fait un test de cohérence avant d'entamer les modifs.
-	if (db_count($test) > 1) {													//
-		dieWithError('', '', 'db_u() cannot be used on tables with non-unique IDs.');	// Si plusieurs lignes ont le même ID, on arrête tout ici par précaution
-	}
 	$toChange = array();															// \
 	foreach ($datas as $key => $value) {											//  |
-		$str_val = ($value==null)?'null':'"'.mysql_real_escape_string($value, $link).'"';						//  |
+		$str_val = ($value===null)?'null':'"'.mysql_real_escape_string($value, $link).'"';						//  |
 		$toChange[] = $key.'='.$str_val;											//  |
     }																				// /
 	$sql = 'UPDATE '.$table.' SET '.implode(',',$toChange).db_w($refs);				// Requête SQL
@@ -139,25 +135,19 @@ function db_u($table, $refs, $datas, $do_log=true) {
     if ($do_log) { db_log($sql); }
     $result = mysql_query($sql, $link);												//
 
- 	if (mysql_errno($link) == 0) { return true; } else { dieWithError(mysql_errno($link), mysql_error($link), $sql); return false; }	// Témoin d'enregistrement (true = OK)
+ 	if (mysql_errno($link) == 0) { return mysql_affected_rows($link); } else { dieWithError(mysql_errno($link), mysql_error($link), $sql); }	// Témoin d'enregistrement (true = OK)
 }
 
 // === SUPPRIME la ligne avec id=$id dans la table $table de la base de donnés de ce site ======================================================================
 function db_d($table, $refs, $do_log=true) {
 	$link = db_o();																	// Ouvre une connexion
-	// Pour éviter le risque d'écraser des données, on fait un test de cohérence avant d'entamer les modifs.
-	$test = db_s($table, $refs);
-	if (db_count($test) > 1) {													//
-		dieWithError('', '', 'db_d() cannot be used on tables with non-unique IDs.');	// Si plusieurs lignes ont le même ID, on arrête tout ici par précaution
-	}
-	elseif (db_count($test) > 0) {
-		$sql = 'DELETE FROM '.$table.db_w($refs);
 
-		if ($do_log) { db_log($sql); }
-		$result = mysql_query($sql, $link);
+	$sql = 'DELETE FROM '.$table.db_w($refs);
 
-		if (mysql_errno($link) == 0) { return true; } else { dieWithError(mysql_errno($link), mysql_error($link), $sql); return false; }	// Témoin d'enregistrement (true = OK)
-	}
+	if ($do_log) { db_log($sql); }
+	$result = mysql_query($sql, $link);
+
+	if (mysql_errno($link) == 0) { return mysql_affected_rows($link); } else { dieWithError(mysql_errno($link), mysql_error($link), $sql); }	// Témoin d'enregistrement (true = OK)
 }
 
 // === EXECUTE la requête passée en paramètre ==================================================================================================================
