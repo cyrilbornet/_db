@@ -30,7 +30,7 @@ function db_o() {
 	if ($GLOBALS['db_link']===false) {
 		$GLOBALS['db_link'] = mysql_connect($GLOBALS['DBHost'], $GLOBALS['DBUser'], $GLOBALS['DBPass']);					//  Connexion à MySQL
 		if (!$GLOBALS['db_link']) {
-			if ((include 'inc_down.html')===false) {
+			if ((@include 'inc_down.html')===false) {
 				print('<h1>Down for maintenance</h1><p>This website is currently down for maintenance. We are currently working on it, so please come back in a few hours...</p><hr/>'.$_SERVER['HTTP_HOST'].'<i>');
 			}
 			die();																											//  En cas d'erreur de connexion, on arrête tout !
