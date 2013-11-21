@@ -36,6 +36,7 @@ function db_o() {
 			die();																											//  En cas d'erreur de connexion, on arrête tout !
 		}
 		mysql_select_db($GLOBALS['DBName'], $GLOBALS['db_link']);															// Sélectionne la base de données
+		mysql_set_charset('UTF8');
 	}
 	return $GLOBALS['db_link'];
 }
@@ -74,7 +75,7 @@ function db_w($refs) {
 				$where[] = 'LOWER('.$proper_key.') LIKE '.$str_val;
 			}elseif(strstr($key, "!")){
 				$proper_key = str_replace('!','',$key);
-				$str_val = ($value===null)?'null':'"'.db_escape($proper_key, $link).'"';
+				$str_val = ($value===null)?'null':'"'.db_escape($value, $link).'"';
 				$where[] = $proper_key.' != '.$str_val;
 			}else{
 				$str_val = ($value===null)?'null':'"'.db_escape($value, $link).'"';

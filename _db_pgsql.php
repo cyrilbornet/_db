@@ -25,6 +25,8 @@ $GLOBALS['DBName'] = '';			// Nom de la base de données
 $GLOBALS['DBUser'] = '';			// Utilisateur Postgres
 $GLOBALS['DBPass'] = '';			// Mot de passe utilisateur Postgres
 
+define('STR_QUOTE', "'");
+
 // === Ouvre une CONNEXION globale au serveur de DB ============================================================================================================
 $GLOBALS['db_link'] = false;
 function db_o() {
@@ -62,15 +64,15 @@ function db_w($refs) {
 		foreach ($refs as $key => $value) {
 			if(strstr($key, "%") !== false){
 				$proper_key = str_replace('%','',$proper_key);
-				$str_val = ($value===null)?'null':'"'.pg_escape_string(str_replace($proper_key,$value,$key), $link).'"';
+				$str_val = ($value===null)?'null':STR_QUOTE.pg_escape_string($link, str_replace($proper_key,(string)$value,$key)).STR_QUOTE;
 				$where[] = $proper_key.' ILIKE '.$str_val;
 			}elseif(strstr($key, "!")){
 				$proper_key = str_replace('!','',$proper_key);
-				$str_val = ($value===null)?'null':'"'.pg_escape_string($proper_key, $link).'"';
+				$str_val = ($value===null)?'null':STR_QUOTE.pg_escape_string($link, (string)$value).STR_QUOTE;
 				$where[] = $proper_key.' != '.$str_val;
 
 			}else{
-				$str_val = ($value===null)?'null':'"'.pg_escape_string($value, $link).'"';
+				$str_val = ($value===null)?'null':STR_QUOTE.pg_escape_string($link, (string)$value).STR_QUOTE;
 				$where[] = $key.' = '.$str_val;
 			}
 		}
@@ -88,9 +90,9 @@ function db_i($table, $datas, $do_log=false) {
 	$link = db_o();																	// Ouvre une connexion
 	$keys = array();
 	$values = array();
-	foreach ($datas as $key => $value) {											// \
+	foreach ($datas as $key => $value) {											//  |
 		$keys[] = $key;																//  |
-		$values[] = '\''.pg_escape_string($link, $value).'\'';				//  Parcourt les données en paramètres pour les réarranger conformément à la requête SQL
+		$values[] = STR_QUOTE.pg_escape_string($link, $value).STR_QUOTE;			//  Parcourt les données en paramètres pour les réarranger conformément à la requête SQL
 	}																				// /
 	$sql = 'INSERT INTO '.$table.' ('.implode(', ', $keys).') VALUES ('.implode(', ', $values).');';				// Requête SQL
 
@@ -111,10 +113,10 @@ function db_u($table, $refs, $datas, $do_log=true) {
 		dieWithError('', '', 'db_u() cannot be used on tables with non-unique IDs.');	// Si plusieurs lignes ont le même ID, on arrête tout ici par précaution
 	}
 
-	$toChange = array();																	// \
+	$toChange = array();															//  |
 	foreach ($datas as $key => $value) {											//  |
-		$sql_value = db_escape($value);						//  |
-		$toChange[] = $key."='".$sql_value."'";								//  |
+		$sql_value = db_escape($value);												//  |
+		$toChange[] = $key.'='.STR_QUOTE.$sql_value.STR_QUOTE;						//  |
     }																				// /
 
 	$sql = 'UPDATE '.$table.' SET '.implode(',',$toChange).db_w($refs);				// Requête SQL
