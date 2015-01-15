@@ -19,19 +19,13 @@
 
 // === VARIABLES de connexion pour ce site =====================================================================================================================
 
-$GLOBALS['DBHost'] = 'localhost';	// Host serveur PostgreSQL
-$GLOBALS['DBPort'] = '';			// Port serveur PostgreSQL
-$GLOBALS['DBName'] = '';			// Nom de la base de données
-$GLOBALS['DBUser'] = '';			// Utilisateur Postgres
-$GLOBALS['DBPass'] = '';			// Mot de passe utilisateur Postgres
-
 define('STR_QUOTE', "'");
 
 // === Ouvre une CONNEXION globale au serveur de DB ============================================================================================================
 $GLOBALS['db_link'] = false;
 function db_o() {
 	if ($GLOBALS['db_link']===false) {
-		$GLOBALS['db_link'] = pg_connect('host='.$GLOBALS['DBHost'].' port='.$GLOBALS['DBPort'].' dbname='.$GLOBALS['DBName'].' user='.$GLOBALS['DBUser'].' password='.$GLOBALS['DBPass']);
+		$GLOBALS['db_link'] = pg_connect('host='.DB_HOST.' port='.DB_PORT.' dbname='.DB_NAME.' user='.DB_USER.' password='.DB_PASS);
 		pg_set_client_encoding($GLOBALS['db_link'], 'UTF8');
 	}
 	return $GLOBALS['db_link'];
@@ -48,6 +42,9 @@ function db_s($table, $refs=array(), $sortParams=array()) {
 			$sort[] = $key.' '.$dir;
 		}
 		$sql.=' ORDER BY '.implode(', ', $sort);
+	}
+	else {
+		$sql.=' ORDER BY RANDOM()';
 	}
     $result = pg_query($link, $sql);
  	if ( $result == false) {

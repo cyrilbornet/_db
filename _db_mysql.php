@@ -12,31 +12,28 @@
  *  12/11/2010 | 1.5 | Potential security flaws fixes.
  *  04/01/2011 | 1.6 | Unique connection in global variable
  *  09/02/2012 | 2.0 | Updated sort arguments calls, added transactions support
- *	31/01/2013 | 2.1 | UPDATE/DELETE by References
- *	07/06/2013 | 2.2 | Operators in WHERE clauses (VB)
+ *  31/01/2013 | 2.1 | UPDATE/DELETE by References
+ *  07/06/2013 | 2.2 | Operators in WHERE clauses (VB)
+ *  28/10/2014 | 2.3 | Support for multiple LIKE on same field
+ *  05/01/2015 | 2.4 | Support for reserved keywords as column names
  */
 
-// === VARIABLES de connexion pour ce site =====================================================================================================================
-
-$GLOBALS['DBHost'] = 'localhost';
-$GLOBALS['DBUser'] = '';
-$GLOBALS['DBPass'] = '';
-$GLOBALS['DBName'] = '';
 
 // === Ouvre une CONNEXION globale au serveur de DB ============================================================================================================
+mb_internal_encoding(DB_ENCODING);
 $GLOBALS['db_link'] = false;
 function db_o() {
 	// MySQL 4.1 et supérieur
 	if ($GLOBALS['db_link']===false) {
-		$GLOBALS['db_link'] = mysql_connect($GLOBALS['DBHost'], $GLOBALS['DBUser'], $GLOBALS['DBPass']);					//  Connexion à MySQL
+		$GLOBALS['db_link'] = mysql_connect(DB_HOST, DB_USER, DB_PASS);					//  Connexion à MySQL
 		if (!$GLOBALS['db_link']) {
 			if ((@include 'inc_down.html')===false) {
 				print('<h1>Down for maintenance</h1><p>This website is currently down for maintenance. We are currently working on it, so please come back in a few hours...</p><hr/>'.$_SERVER['HTTP_HOST'].'<i>');
 			}
 			die();																											//  En cas d'erreur de connexion, on arrête tout !
 		}
-		mysql_select_db($GLOBALS['DBName'], $GLOBALS['db_link']);															// Sélectionne la base de données
-		mysql_set_charset('UTF8');
+		mysql_select_db(DB_NAME, $GLOBALS['db_link']);															// Sélectionne la base de données
+		mysql_set_charset(DB_ENCODING);
 	}
 	return $GLOBALS['db_link'];
 }
@@ -63,23 +60,35 @@ function db_s($table, $refs=array(), $sortParams=array()) {
     return $result;
 }
 
+
+function db_quote($val) {
+	return (string)(is_string($val) ? '"'.db_escape($val).'"' : (is_null($val) ? 'null' : db_escape($val)) );
+}
+
 function db_w($refs) {
 	// Filter parameters ____________________________________________________________________
 	$link = db_o();																	// Ouvre une connexion
 	if (count($refs)>0) {
 		$where = array();
+		$fieldOps = array('!'=>'!=','<'=>'<','>'=>'>','≤'=>'<=','≥'=>'>=');
 		foreach ($refs as $key => $value) {
-			if (strstr($key, '%') !== false) {
+			if (mb_substr($key, 0, 1)=='%' || mb_substr($key, -1)=='%') {
 				$proper_key = str_replace('%','',$key);
-				$str_val = ($value===null)?'null':'"'.db_escape(str_replace($proper_key,$value,$key), $link).'"';
-				$where[] = 'LOWER('.$proper_key.') LIKE '.$str_val;
-			}elseif(strstr($key, "!")){
-				$proper_key = str_replace('!','',$key);
-				$str_val = ($value===null)?'null':'"'.db_escape($value, $link).'"';
-				$where[] = $proper_key.' != '.$str_val;
-			}else{
-				$str_val = ($value===null)?'null':'"'.db_escape($value, $link).'"';
-				$where[] = $key.' = '.$str_val;
+				$like = array();
+				if (is_array($value)) {
+					foreach ($value as $term) {
+						$like[] = 'LOWER(`'.$proper_key.'`) LIKE '.db_quote(str_replace($proper_key,$term,$key));
+					}
+				}
+				else {
+					$like[] = 'LOWER(`'.$proper_key.'`) LIKE '.db_quote(str_replace($proper_key,$value,$key));
+				}
+				$where[] = implode(' OR ', $like);
+			} elseif(in_array(mb_substr($key, 0, 1), array_keys($fieldOps))) {
+				$proper_key = mb_substr($key, 1);
+				$where[] = '`'.$proper_key.'`'.$fieldOps[mb_substr($key, 0, 1)].db_quote($value);
+			} else {
+				$where[] = '`'.$key.'`='.db_quote($value);
 			}
 		}
 		return ' WHERE ('.implode(' AND ', $where).')';
