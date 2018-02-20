@@ -1,3 +1,3 @@
 <?php
-	require '_db_mysql.php';
-#	require '_db_pgsql.php';
+	require_once __DIR__.'/_db_mysql.php';
+#	require_once __DIR__.'/_db_pgsql.php';

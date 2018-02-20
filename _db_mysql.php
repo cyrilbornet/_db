@@ -16,6 +16,8 @@
  *  07/06/2013 | 2.2 | Operators in WHERE clauses (VB)
  *  28/10/2014 | 2.3 | Support for multiple LIKE on same field
  *  05/01/2015 | 2.4 | Support for reserved keywords as column names
+ *  11/02/2016 | 2.5 | Full mysqli support
+ *  11/11/2017 | 2.6 | Shorthand for explicit ids selector in db_w()
  */
 
 
@@ -25,15 +27,15 @@ $GLOBALS['db_link'] = false;
 function db_o() {
 	// MySQL 4.1 et supérieur
 	if ($GLOBALS['db_link']===false) {
-		$GLOBALS['db_link'] = mysql_connect(DB_HOST, DB_USER, DB_PASS);					//  Connexion à MySQL
+		$GLOBALS['db_link'] = mysqli_connect(DB_HOST, DB_USER, DB_PASS);					//  Connexion à MySQL
 		if (!$GLOBALS['db_link']) {
 			if ((@include 'inc_down.html')===false) {
 				print('<h1>Down for maintenance</h1><p>This website is currently down for maintenance. We are currently working on it, so please come back in a few hours...</p><hr/>'.$_SERVER['HTTP_HOST'].'<i>');
 			}
 			die();																											//  En cas d'erreur de connexion, on arrête tout !
 		}
-		mysql_select_db(DB_NAME, $GLOBALS['db_link']);															// Sélectionne la base de données
-		mysql_set_charset(DB_ENCODING);
+		mysqli_select_db($GLOBALS['db_link'], DB_NAME);															// Sélectionne la base de données
+		mysqli_set_charset($GLOBALS['db_link'], DB_ENCODING);
 	}
 	return $GLOBALS['db_link'];
 }
@@ -52,9 +54,9 @@ function db_s($table, $refs=array(), $sortParams=array()) {
 	}
 	//print_r("dbs");
 	//print_r($sql);
-    $result = mysql_query($sql, $link);
- 	if (mysql_errno($link) != 0) {
- 		dieWithError(mysql_errno($link), mysql_error($link), $sql);
+    $result = mysqli_query($link, $sql);
+ 	if (mysqli_errno($link) != 0) {
+ 		dieWithError(mysqli_errno($link), mysqli_error($link), $sql);
  	}
  	//print_r($result);
     return $result;
@@ -68,6 +70,7 @@ function db_quote($val) {
 function db_w($refs) {
 	// Filter parameters ____________________________________________________________________
 	$link = db_o();																	// Ouvre une connexion
+	if (is_array($refs)) {
 	if (count($refs)>0) {
 		$where = array();
 		$fieldOps = array('!'=>'!=','<'=>'<','>'=>'>','≤'=>'<=','≥'=>'>=');
@@ -95,6 +98,10 @@ function db_w($refs) {
 	}
 	else return '';
 }
+	else {
+		return ' WHERE (id="'.$refs.'")';
+	}
+}
 
 // === INSERE les données $datas dans la table $table de la base de donnés de ce site ==========================================================================
 function db_i($table, $datas, $do_log=true) {
@@ -103,14 +110,14 @@ function db_i($table, $datas, $do_log=true) {
 	$values = array();
 	foreach ($datas as $key => $value) {											// \
 		$keys[] = $key;																//  |
-		$values[] = '"'.mysql_real_escape_string($value, $link).'"';				//  Parcourt les données en paramètres pour les réarranger conformément à la requête SQL
+		$values[] = '"'.mysqli_real_escape_string($link, $value).'"';				//  Parcourt les données en paramètres pour les réarranger conformément à la requête SQL
 	}																				// /
 	$sql = 'INSERT INTO '.$table.' ('.implode(', ', $keys).') VALUES ('.implode(', ', $values).');';				// Requête SQL
 
     if ($do_log) { db_log($sql); }
-    $result = mysql_query($sql, $link);												//
+    $result = mysqli_query($link, $sql);												//
 
- 	if (mysql_errno($link) == 0) { return mysql_insert_id($link); } else { dieWithError(mysql_errno($link), mysql_error($link), $sql); return false; }	// Témoin d'enregistrement (true = OK)
+ 	if (mysqli_errno($link) == 0) { return mysqli_insert_id($link); } else { dieWithError(mysqli_errno($link), mysqli_error($link), $sql); return false; }	// Témoin d'enregistrement (true = OK)
 }
 
 // === REMPLACE la ligne avec sélecteur spécifié ===============================================================================================================
@@ -120,14 +127,14 @@ function db_r($table, $datas, $do_log=true) {
 	$values = array();
 	foreach ($datas as $key => $value) {											// \
 		$keys[] = $key;																//  |
-		$values[] = '"'.mysql_real_escape_string($value, $link).'"';				//  Parcourt les données en paramètres pour les réarranger conformément à la requête SQL
+		$values[] = '"'.mysqli_real_escape_string($link, $value).'"';				//  Parcourt les données en paramètres pour les réarranger conformément à la requête SQL
 	}																				// /
 	$sql = 'REPLACE INTO '.$table.' ('.implode(', ', $keys).') VALUES ('.implode(', ', $values).');';				// Requête SQL
 
     if ($do_log) { db_log($sql); }
-    $result = mysql_query($sql, $link);												//
+    $result = mysqli_query($link, $sql);												//
 
- 	if (mysql_errno($link) == 0) { return mysql_insert_id($link); } else { dieWithError(mysql_errno($link), mysql_error($link), $sql); return false; }	// Témoin d'enregistrement (true = OK)
+ 	if (mysqli_query($link) == 0) { return mysqli_query($link); } else { dieWithError(mysqli_query($link), mysqli_query($link), $sql); return false; }	// Témoin d'enregistrement (true = OK)
 }
 
 
@@ -137,15 +144,15 @@ function db_u($table, $refs, $datas, $do_log=true) {
 
 	$toChange = array();															// \
 	foreach ($datas as $key => $value) {											//  |
-		$str_val = ($value===null)?'null':'"'.mysql_real_escape_string($value, $link).'"';						//  |
+		$str_val = ($value===null)?'null':'"'.mysqli_real_escape_string($link, $value).'"';						//  |
 		$toChange[] = $key.'='.$str_val;											//  |
     }																				// /
 	$sql = 'UPDATE '.$table.' SET '.implode(',',$toChange).db_w($refs);				// Requête SQL
 
     if ($do_log) { db_log($sql); }
-    $result = mysql_query($sql, $link);												//
+    $result = mysqli_query($link, $sql);												//
 
- 	if (mysql_errno($link) == 0) { return mysql_affected_rows($link); } else { dieWithError(mysql_errno($link), mysql_error($link), $sql); }	// Témoin d'enregistrement (true = OK)
+ 	if (mysqli_errno($link) == 0) { return mysqli_affected_rows($link); } else { dieWithError(mysqli_errno($link), mysqli_error($link), $sql); }	// Témoin d'enregistrement (true = OK)
 }
 
 // === SUPPRIME la ligne avec id=$id dans la table $table de la base de donnés de ce site ======================================================================
@@ -155,19 +162,19 @@ function db_d($table, $refs, $do_log=true) {
 	$sql = 'DELETE FROM '.$table.db_w($refs);
 
 	if ($do_log) { db_log($sql); }
-	$result = mysql_query($sql, $link);
+	$result = mysqli_query($link, $sql);
 
-	if (mysql_errno($link) == 0) { return mysql_affected_rows($link); } else { dieWithError(mysql_errno($link), mysql_error($link), $sql); }	// Témoin d'enregistrement (true = OK)
+	if (mysqli_errno($link) == 0) { return mysqli_affected_rows($link); } else { dieWithError(mysqli_errno($link), mysqli_error($link), $sql); }	// Témoin d'enregistrement (true = OK)
 }
 
 // === EXECUTE la requête passée en paramètre ==================================================================================================================
 function db_x($request, $do_log=true, $qParams=array()) {
 	$link = db_o();
-	$result = mysql_query($request, $link);
-	if ($do_log && substr($request, 0, 7) != 'SELECT ' && mysql_errno($link)>0) { db_log($request); }
+	$result = mysqli_query($link, $request);
+	if ($do_log && substr($request, 0, 7) != 'SELECT ' && mysqli_errno($link)>0) { db_log($request); }
 
-	if (mysql_errno($link)) {
-		dieWithError(mysql_errno($link), mysql_error($link), $request);
+	if (mysqli_errno($link)) {
+		dieWithError(mysqli_errno($link), mysqli_error($link), $request);
 	}
 	else {
 		return $result;
@@ -179,32 +186,45 @@ function db_x($request, $do_log=true, $qParams=array()) {
 function db_begin($title='default') {
 	$link = db_o();
 	$sql = 'BEGIN TRANSACTION '.$title.'';
-	$result = mysql_query($sql, $link);
+	$result = mysqli_query($link, $sql);
 }
 
 function db_commit($title='default') {
 	$link = db_o();
 	$sql = 'COMMIT TRANSACTION '.$title.'';
-	$result = mysql_query($sql, $link);
+	$result = mysqli_query($link, $sql);
 }
 
 // === TOOLS & Helpers =========================================================================================================================================
 
 function db_escape($string) {
 	$link = db_o();
-	return mysql_real_escape_string($string, $link);
+	return mysqli_real_escape_string($link, $string);
 }
 
 function db_fetch($src) {
-	return mysql_fetch_assoc($src);
+	return mysqli_fetch_assoc($src);
+}
+
+function db_fetch_all($src, $fieldFilter='') {
+	$results = array();
+	while ($result = mysqli_fetch_assoc($src)) {
+		if ($fieldFilter!='') {
+			$results[$result['id']] = $result[$fieldFilter];
+		}
+		else {
+			$results[$result['id']] = $result;
+		}
+	}
+	return $results;
 }
 
 function db_seek($src, $offset = 0) {
-	return mysql_data_seek($src, $offset);
+	return mysqli_data_seek($src, $offset);
 }
 
 function db_count($src) {
-	return mysql_num_rows($src);
+	return mysqli_num_rows($src);
 }
 
 function dieWithError($code, $msg, $stmt) {
@@ -215,9 +235,7 @@ function dieWithError($code, $msg, $stmt) {
 
 function db_log($request) {
 	$link = db_o();
-	$result = mysql_query('INSERT INTO db_log (user_id, date, query) VALUES ("'.@$_SESSION['user_id'].'", CURRENT_TIMESTAMP, "'.db_escape($request, $link).'");', $link);
+	$result = mysqli_query($link, 'INSERT INTO db_log (user_id, date, query) VALUES ("'.@$_SESSION['user_id'].'", CURRENT_TIMESTAMP, "'.db_escape($request, $link).'");');
 }
 
 
-
-?>
